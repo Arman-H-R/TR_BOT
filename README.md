@@ -1,5 +1,14 @@
 # SMC bot for XAUUSD - four files
 
+> **v2.0.0** (2026-11-18): three rule changes chosen by a large, out-of-sample
+> checked study - flat by **Friday 16:00 New York**, the touch candle must
+> **close back outside the order block**, break-even at **+2R** - plus realistic
+> gap fills in the backtest and saved per-position risk in the live bot.
+> Results, risks and how to reproduce everything: [`research/RESULTS.md`](research/RESULTS.md).
+> Short version: 17 months, realistic costs, v1 +5.9 R / max DD 18.5 % ->
+> v2 +77 R / max DD 9.7 %, positive in both halves - but the same logic lost
+> money on 2022-2024 M15 history, so forward-test on demo first.
+
 | File | What it is |
 |---|---|
 | [`smc_core.py`](smc_core.py) | **the strategy.** No broker, no files, no CLI - just the rules. |
@@ -20,12 +29,13 @@ XAUUSD only, New York session only, M5 only.
 | 3 | **Fast impulse, slow pullback** - the return must take >= impulse + 2 candles, so the spec's "BOS in 3 candles -> back in 5 or more" holds. The absolute rails (`max_impulse_bars`, `min_pullback_bars`) change nothing measurable. | `find_signal()` |
 | 4 | **LQ** - two or more approximately equal lows (floor) / highs (ceiling) **within 1.00 USD**, which price sweeps on its way to the OB. That width comes from the spec's own example: a floor of 4999 and 5000 is one pool. | `find_liquidity()` |
 | 5 | **Entry** - the setup is watched from the break and re-checked on **every closed candle**; when price touches the OB the setup is either valid (trade) or not (see below). One entry per OB. | `SetupTracker.update()`, `check_setup()` |
-| 6 | **SL / TP / BE** - SL = far side of the OB -/+ 4 pips. R = \|entry - SL\|. TP = entry +/- **3R** (`Config.rr`; the first spec said 2R). At +1R the SL moves to entry +/- 2 pips, so break-even is real after the spread ("tax"). | `build_trade()`, `apply_breakeven()` |
+| 6 | **SL / TP / BE** - SL = far side of the OB -/+ 4 pips. R = \|entry - SL\|. TP = entry +/- **4R** (`Config.rr`). At **+2R** (`be_trigger_r`, v2; was 1R) the SL moves to entry +/- 2 pips, so break-even is real after the spread ("tax"). | `build_trade()`, `apply_breakeven()` |
 | 7 | **Filters** - XAUUSD only; 08:00-17:00 `America/New_York`, DST handled; weekdays only; max 3 trades per day. | `in_session()`, `DayLimit` |
+| 8 | **v2: confirmation** - the candle that touches the OB must close back outside it (above the top for a buy, below the bottom for a sell); otherwise that touch is ignored and the setup keeps waiting (`entry_confirm_close`). | `SetupTracker.update()` |
+| 9 | **v2: Friday** - no new trade from Friday 16:00 New York, and an open position is closed then (`friday_close`); a position carried over a weekend anyway is closed at the first chance. | `friday_cutoff()` |
 
 Rule 6 on the numbers from the spec: entry `5000`, SL `4990` -> R `10`, and at
-`5010` the stop jumps to `5000.20`. TP is `5030` at the 3R default, `5020` with
-`rr=2.0` as the first spec had it.
+`5020` (+2R) the stop jumps to `5000.20`. TP is `5040` at the 4R default.
 
 ## LQ: how a pool of equal lows is recognised (rule 4)
 
@@ -286,7 +296,7 @@ python live_trade.py --risk 0.25 --timeframe M5
 
 `--dry-run` logs every signal and sends nothing. Live, it sends a market order
 with the SL and the `Config.rr` TP (4R as shipped), then moves the stop to
-break-even at +1R.
+break-even at +2R, and flattens on Friday at 16:00 New York.
 
 * **same candles, same memory as the backtest.** Every closed candle goes to the
   tracker - also while a position is open, outside the New York session and after
@@ -299,9 +309,10 @@ break-even at +1R.
 
 * one position at a time, `--max-trades` per day counted from the broker's own
   deal history, so a restart cannot double up;
-* the break-even state is re-derived from the position itself (`R = |TP - entry| / rr`,
-  so do not change `rr` while a position is open),
-  so a restart loses nothing and there is no state file;
+* the risk of every position is saved when it opens (`--state`,
+  `reports/live_positions.json`, and the order comment `smc r=<risk>`), and the
+  break-even / trail state is read off the position's current SL, so a restart -
+  or changing `rr` while a position is open - loses nothing;
 * volume is rounded **down** to the broker's step - it never over-risks;
 * rejects a setup whose stop is outside 10-150 pips, or a spread above
   `--max-spread-pips`, or SL/TP closer than the broker's own stop level;

@@ -54,6 +54,7 @@ def simulate_live(bars: core.Bars, cfg: core.Config, spread: float, spec: dict,
     seen = set()                       # every signal the tracker produced
     down = set()                       # candles the bot was not polling
     stops_level = spec.get("stops_level", 0) * spec.get("point", 0.01)
+    trend_all = core.trend_series(bars.time, bars.close, cfg)   # what the live bot reads from H1/H4
 
     for i in range(2 * need, len(bars)):
         now = pd.Timestamp(bars.time[i])
@@ -83,11 +84,12 @@ def simulate_live(bars: core.Bars, cfg: core.Config, spread: float, spec: dict,
                 seen.add((pd.Timestamp(signal.time), str(signal.ob_time)))
         else:
             history = bars.window(i - 2 * need + 1, i + 1)
-            signal, _, stale = live_trade.feed_tracker(tracker, history, need, last_seen)
+            signal, _, stale = live_trade.feed_tracker(
+                tracker, history, need, last_seen, trend_all[i - 2 * need + 1:i + 1])
             last_seen = now
             for s in stale + ([signal] if signal is not None else []):
                 seen.add((pd.Timestamp(s.time), str(s.ob_time)))
-            if position or not core.in_session(now, cfg):
+            if position or not core.in_session(now, cfg) or core.friday_cutoff(now, cfg):
                 signal = None
 
         if signal is None:
@@ -139,7 +141,7 @@ def main() -> int:
     else:
         df, spec = backtest.load_mt5(args.symbol, "M5", args.bars)
     spread = spec.get("spread", 0.30)
-    cfg = core.Config(symbol=args.symbol)
+    cfg = core.Config(symbol=args.symbol)        # the shipped defaults
     need = max(cfg.required_bars(), 200)
     # the live runs need 2 x need candles of history before their first decision;
     # give the backtest the same start so both look at the same candles

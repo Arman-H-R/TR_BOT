@@ -22,11 +22,12 @@ THE RULES (exactly as specified)
             the 4999/5000 floor, then touches 4990, then we buy.
 5. ENTRY    a touch of the OB after that sweep. One entry per OB.
 6. RISK     SL = far side of the OB -/+ sl_buffer_pips (4 pips).
-            R  = |entry - SL|,  TP = entry +/- 3R (Config.rr - the first spec
-            said 2R, 3R was asked for later; set rr=2.0 to go back).
-            At +1R the SL is moved to entry +/- be_cost_pips, so break-even is
-            real after spread/commission ("tax").
+            R  = |entry - SL|,  TP = entry +/- 4R (Config.rr).
+            At +2R (be_trigger_r, v2; was 1R) the SL is moved to entry +/-
+            be_cost_pips, so break-even is real after spread/commission ("tax").
 7. FILTERS  XAUUSD only, New York session only.
+8. v2       the touch candle must close back outside the OB (entry_confirm_close),
+            flat on Friday from 16:00 New York (friday_close). Why: research/RESULTS.md
 
 PIPS ON GOLD. A "pip" of XAUUSD is taken as 0.10 USD (Config.pip_size), so the
 4-pip stop buffer = 0.40 USD and 1.00 lot (100 oz) risks 100 USD per 1.00 USD
@@ -169,7 +170,9 @@ class Config:
                                   # on 40 winners instead of 33 at the same 12.7R
                                   # drawdown. The gap to 3R is ~1 standard error,
                                   # so this is a lean, not a proven improvement.
-    be_trigger_r: float = 1.0     # move to break-even at +1R
+    be_trigger_r: float = 2.0     # move to break-even at +2R (v2; was 1R). 1R moved
+                                  # the stop too early: 1.5-2R was better in both the
+                                  # in-sample and the out-of-sample half (research/RESULTS.md)
     be_cost_pips: float = 2.0     # ... entry + 2 pips, to cover the "tax"
     # Step trailing after break-even: once price reaches +kR (k >= trail_start_r)
     # the stop moves to +(k - trail_gap_r)R. With the defaults and rr=4:
@@ -245,6 +248,19 @@ class Config:
     amd_reclaim: bool = True              # price must close back inside the range
     amd_min_range_pips: float = 20.0      # ignore a range too small to mean anything
     amd_quality: int = 2                  # weight when amd_mode = "quality"
+
+    # --- 9. filters and exits added by the v2 research (research/RESULTS.md) --
+    # Higher-timeframe trend: only take an order block that points the same way
+    # as the last CLOSED candle of trend_tf relative to its EMA(trend_ema).
+    #   "off" | "H1" | "H4"
+    trend_filter: str = "off"
+    trend_ema: int = 50
+    # The touch candle has to CLOSE back outside the zone (a rejection), i.e.
+    # above the OB top for a buy, below the OB bottom for a sell.
+    entry_confirm_close: bool = True       # v2 default
+    # Fridays: no new entry from this New York time on, and an open position is
+    # closed at it - weekend gaps jump straight through stops. None = off.
+    friday_close: Optional[time] = time(16, 0)   # v2 default
 
     # --- housekeeping -----------------------------------------------------
     max_trades_per_day: int = 3
@@ -391,6 +407,64 @@ def in_session(ts, cfg: Config) -> bool:
         return False
     t = local.time()
     return start <= t < end if start <= end else (t >= start or t < end)
+
+
+def friday_cutoff(ts, cfg: Config, entry_ts=None) -> bool:
+    """True from cfg.friday_close (NY time) on a Friday until the week ends.
+
+    With entry_ts it is also True when the position has been carried over a
+    weekend (the bot was down, or a holiday closed the market early on Friday),
+    so the first chance after the gap is used to get out.
+    """
+    if cfg.friday_close is None:
+        return False
+    tz = session_timezone(cfg)
+    ts = pd.Timestamp(ts)
+    ts = ts.tz_localize("UTC") if ts.tzinfo is None else ts
+    local = ts.tz_convert(tz)
+    if local.weekday() >= 5 or (local.weekday() == 4 and local.time() >= cfg.friday_close):
+        return True
+    if entry_ts is not None:
+        e = pd.Timestamp(entry_ts)
+        e = e.tz_localize("UTC") if e.tzinfo is None else e
+        if (local.normalize() - e.tz_convert(tz).normalize()).days >= 3 and local.weekday() < e.tz_convert(tz).weekday():
+            return True
+    return False
+
+
+# --------------------------------------------------------------------------- #
+# 3b. higher-timeframe trend (filter 9)
+# --------------------------------------------------------------------------- #
+TREND_RULES = {"H1": "1h", "H4": "4h"}
+
+
+def trend_series(index: pd.DatetimeIndex, close: np.ndarray, cfg: Config) -> np.ndarray:
+    """+1 / -1 for every candle: the last CLOSED higher-timeframe close against
+    its EMA(trend_ema), without look-ahead.
+
+    The higher-timeframe candle opening at T is usable from T + its length,
+    i.e. by the first candle that OPENS after it closed. The live bot does the
+    same (live_trade.htf_trend()).
+    """
+    if cfg.trend_filter == "off":
+        return np.zeros(len(index), int)
+    rule = TREND_RULES[cfg.trend_filter]
+    s = pd.Series(np.asarray(close, float), index=index)
+    htf = s.resample(rule, label="left", closed="left").last().dropna()
+    return trend_from_htf(htf.index, htf.to_numpy(), index, cfg)
+
+
+def trend_from_htf(htf_time, htf_close, index, cfg: Config) -> np.ndarray:
+    """Trend for each time in `index` from higher-timeframe candles (open
+    times + closes). Shared by the backtest (candles resampled from M5) and the
+    live bot (the broker's own H1/H4 candles)."""
+    rule = TREND_RULES[cfg.trend_filter]
+    htf = pd.Series(np.asarray(htf_close, float), index=pd.DatetimeIndex(htf_time))
+    ema = htf.ewm(span=cfg.trend_ema, adjust=False).mean()
+    sign = np.sign(htf - ema)
+    usable = pd.Series(sign.values, index=sign.index + pd.Timedelta(rule))
+    usable = usable[~usable.index.duplicated(keep="last")]
+    return usable.reindex(pd.DatetimeIndex(index), method="ffill").fillna(0).astype(int).to_numpy()
 
 
 # --------------------------------------------------------------------------- #
@@ -1175,7 +1249,10 @@ class SetupTracker:
             self._seen_breaks.add((pd.Timestamp(bars.time[bos.break_index]), bos.direction))
 
     # ------------------------------------------------------------------ main
-    def update(self, bars: Bars, require_session: bool = True) -> Optional[Signal]:
+    def update(self, bars: Bars, require_session: bool = True,
+               trend: int = 0) -> Optional[Signal]:
+        """`trend` = the higher-timeframe bias for the newest candle (see
+        trend_series / trend_from_closes); only read when cfg.trend_filter is on."""
         cfg = self.cfg
         n = len(bars)
         if n < 2 * cfg.swing_lookback + 10:
@@ -1274,6 +1351,13 @@ class SetupTracker:
                 continue
             if require_session and not in_session(now, cfg):
                 self._tick("touch ignored: outside the session")
+                continue
+            if cfg.trend_filter != "off" and trend != d:
+                self._tick("touch ignored: against the higher-timeframe trend")
+                continue
+            if cfg.entry_confirm_close and not (
+                    bars.close[i] > edge if d > 0 else bars.close[i] < edge):
+                self._tick("touch ignored: candle did not close back outside the OB")
                 continue
 
             quality, parts = ob_quality(cfg, setup.ob_top - setup.ob_bottom,

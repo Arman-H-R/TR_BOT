@@ -26,6 +26,9 @@ Where the simulation has to guess, it guesses against the trade:
   * management starts on the candle AFTER the entry (the signal candle's own
     range already happened while the order was being placed)
   * if one candle contains both the stop and the target, the STOP is taken
+  * a candle that OPENS beyond the stop (weekend / daily-break / news gap) fills
+    the stop at that open, not at the stop price - a stop order cannot do better
+    (gap_fill=False restores the old, optimistic behaviour)
   * sell exits are compared against high+spread / low+spread, i.e. the ask side
   * spread and commission are charged on every trade
 """
@@ -37,6 +40,7 @@ import math
 import os
 import sys
 from dataclasses import dataclass, replace
+from datetime import time as dtime
 from typing import Optional
 
 import numpy as np
@@ -112,7 +116,7 @@ class Result:
     risk_money: float
     pnl: float
     r: float
-    outcome: str            # TP | SL | BE | TRAIL | SESSION | END
+    outcome: str            # TP | SL | BE | TRAIL | SESSION | FRIDAY | END
     bars_held: int
     be_done: bool
     ambiguous: bool
@@ -132,7 +136,7 @@ class Result:
 def run(df: pd.DataFrame, cfg: core.Config, spread: float, commission: float = 0.0,
         balance: float = 10000.0, max_open: int = 1, max_spread_pips: float = 10.0,
         require_session: bool = True, spec: Optional[dict] = None,
-        progress: bool = False) -> tuple[list[Result], list[dict], dict]:
+        progress: bool = False, gap_fill: bool = True) -> tuple[list[Result], list[dict], dict]:
     spec = spec or {}
     bars = core.Bars.from_dataframe(df)
     n = len(bars)
@@ -140,6 +144,7 @@ def run(df: pd.DataFrame, cfg: core.Config, spread: float, commission: float = 0
     if n <= need + 10:
         raise SystemExit(f"only {n} candles - need more than {need}")
 
+    trend = core.trend_series(bars.time, bars.close, cfg)   # 0s when the filter is off
     day_limit = core.DayLimit(cfg)
     tracker = core.SetupTracker(cfg)
     counters: dict[str, int] = {}
@@ -158,6 +163,7 @@ def run(df: pd.DataFrame, cfg: core.Config, spread: float, commission: float = 0
     for i in range(need, n):
         now = bars.time[i]
         high, low, close = bars.high[i], bars.low[i], bars.close[i]
+        friday = core.friday_cutoff(now, cfg)
 
         # ---- 1. manage what is already open, on this candle ---------------
         still: list[dict] = []
@@ -175,16 +181,22 @@ def run(df: pd.DataFrame, cfg: core.Config, spread: float, commission: float = 0
             hit_tp = hi >= trade.tp if d > 0 else lo <= trade.tp
 
             stop_kind = ("TRAIL" if trade.trail_r > 0 else "BE" if trade.be_done else "SL")
+            op = bars.open[i] + (spread if d < 0 else 0.0)
+            stop_px = trade.sl
+            if gap_fill and ((op < trade.sl) if d > 0 else (op > trade.sl)):
+                stop_px = op                   # gapped through the stop
             if hit_sl and hit_tp:
-                price, why, ambiguous = trade.sl, stop_kind, True
+                price, why, ambiguous = stop_px, stop_kind, True
             elif hit_sl:
-                price, why, ambiguous = trade.sl, stop_kind, False
+                price, why, ambiguous = stop_px, stop_kind, False
             elif hit_tp:
                 price, why, ambiguous = trade.tp, "TP", False
             else:
                 core.apply_breakeven(trade, high=hi, low=lo)      # rule 6: +1R -> entry + tax
                 core.apply_trailing(trade, high=hi, low=lo, cfg=cfg)  # optional step trail
-                if (cfg.close_at_session_end and require_session
+                if core.friday_cutoff(now, cfg, entry_ts=t["entry_time"]):
+                    price, why, ambiguous = (close + spread if d < 0 else close), "FRIDAY", False
+                elif (cfg.close_at_session_end and require_session
                         and not core.in_session(now, cfg)):
                     price, why, ambiguous = (close + spread if d < 0 else close), "SESSION", False
                 else:
@@ -213,7 +225,7 @@ def run(df: pd.DataFrame, cfg: core.Config, spread: float, commission: float = 0
 
         # ---- 2. ask the core for a setup on this closed candle ------------
         window = bars.window(i - need + 1, i + 1)
-        signal = tracker.update(window, require_session=require_session)
+        signal = tracker.update(window, require_session=require_session, trend=int(trend[i]))
         curve.append(dict(time=now, equity=equity, open=len(open_trades)))
 
         if signal is None:
@@ -226,6 +238,9 @@ def run(df: pd.DataFrame, cfg: core.Config, spread: float, commission: float = 0
             continue
         if len(open_trades) >= max_open:
             tick("skipped: a trade is already open")
+            continue
+        if friday:
+            tick("skipped: Friday close")
             continue
         if not day_limit.allows(now, getattr(signal, "quality", 0)):
             tick("skipped: daily trade limit")
@@ -427,7 +442,11 @@ def build_cfg(args) -> core.Config:
         if not hasattr(cfg, key):
             raise SystemExit(f"unknown config field {key!r}")
         current = getattr(cfg, key)
-        if isinstance(current, bool):
+        if key == "friday_close" or isinstance(current, dtime):
+            v = value.strip().lower()
+            setattr(cfg, key, None if v in ("none", "off", "") else
+                    dtime(*(int(x) for x in v.split(":"))))
+        elif isinstance(current, bool):
             setattr(cfg, key, value.strip().lower() in ("1", "true", "yes"))
         elif isinstance(current, int) and not isinstance(current, bool):
             setattr(cfg, key, int(value))

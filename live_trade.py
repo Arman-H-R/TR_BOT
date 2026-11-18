@@ -8,11 +8,16 @@ live_trade.py - runs the smc_core strategy live on MetaTrader 5 (XAUUSD, NY sess
 
 What it does, once per poll:
   1. pull the last closed candles from MT5 (never the forming one),
-  2. manage an open position: at +1R move the SL to entry + cost ("tax"),
+  2. manage an open position: break-even at +be_trigger_r, the optional step
+     trail, and the Friday close - all from the position's REAL risk, which is
+     saved when the order is sent (state file + order comment), so a restart or
+     a change of Config.rr cannot confuse it,
   3. on a brand new closed candle, feed it to smc_core.SetupTracker - ALWAYS,
      like backtest.py does, even with a position open or outside the session -
-     and only then decide: flat, inside the NY session and under the daily cap
-     -> send a market order with SL and the Config.rr take profit.
+     together with the higher-timeframe trend from the broker's own H1/H4
+     candles, and only then decide: flat, inside the NY session, not past the
+     Friday cut-off and under the daily cap -> send a market order with SL and
+     the Config.rr take profit.
 
 Safety: XAUUSD only, New York session only, one position at a time,
 max_trades_per_day enforced from the broker's own deal history (so a restart
@@ -23,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import logging
 import os
 import sys
@@ -148,6 +154,75 @@ def get_bars(symbol: str, timeframe: str, count: int, utc_offset: float) -> core
     return core.Bars.from_dataframe(df.iloc[:-1])     # drop the forming candle
 
 
+def htf_trend(symbol: str, cfg: core.Config, index, utc_offset: float):
+    """Trend for each candle time in `index` from the broker's own H1/H4 candles
+    (closed ones only), computed exactly like core.trend_series() in the backtest."""
+    if cfg.trend_filter == "off":
+        return None
+    tf = getattr(mt5, TIMEFRAMES[cfg.trend_filter])
+    rates = mt5.copy_rates_from_pos(symbol, tf, 1, 600)        # 1 = skip the forming one
+    if rates is None or len(rates) < 3 * cfg.trend_ema:
+        raise RuntimeError("not enough %s candles for the trend filter: %s"
+                           % (cfg.trend_filter, mt5.last_error()))
+    t = pd.to_datetime(rates["time"], unit="s", utc=True) - pd.Timedelta(hours=utc_offset)
+    return core.trend_from_htf(t, rates["close"], index, cfg)
+
+
+class PositionState:
+    """What the bot knew when it opened a position, kept across restarts.
+
+    manage() needs the ORIGINAL risk (entry - initial SL). The stop moves and
+    Config.rr may change, so neither can be trusted to rebuild it. Sources, in
+    order: this JSON file, the order comment ("smc r=<risk>"), and only for
+    positions opened by an older version, |TP - entry| / Config.rr.
+    """
+
+    def __init__(self, path: Optional[str]):
+        self.path = path
+        self.data = {}
+        if path and os.path.exists(path):
+            try:
+                with open(path, encoding="utf-8") as fh:
+                    self.data = json.load(fh)
+            except Exception as exc:          # a broken file must not stop the bot
+                LOG.warning("position state %s unreadable (%s) - starting empty", path, exc)
+
+    def save(self) -> None:
+        if not self.path:
+            return
+        folder = os.path.dirname(os.path.abspath(self.path))
+        os.makedirs(folder, exist_ok=True)
+        tmp = self.path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(self.data, fh, indent=1)
+        os.replace(tmp, self.path)
+
+    def remember(self, ticket: int, risk: float, rr: float, entry: float) -> None:
+        self.data[str(int(ticket))] = {"risk": float(risk), "rr": float(rr),
+                                       "entry": float(entry)}
+        self.save()
+
+    def forget_except(self, tickets) -> None:
+        keep = {str(int(t)) for t in tickets}
+        if set(self.data) - keep:
+            self.data = {k: v for k, v in self.data.items() if k in keep}
+            self.save()
+
+    def risk(self, position, cfg: core.Config) -> float:
+        saved = self.data.get(str(int(position.ticket)))
+        if saved and saved.get("risk", 0) > 0:
+            return float(saved["risk"])
+        comment = getattr(position, "comment", "") or ""
+        if "r=" in comment:
+            try:
+                return float(comment.split("r=", 1)[1].split()[0])
+            except ValueError:
+                pass
+        if position.tp:
+            return abs(position.tp - position.price_open) / cfg.rr
+        return 0.0
+
+
 def our_position(symbol: str, magic: int):
     positions = mt5.positions_get(symbol=symbol) or ()
     for p in positions:
@@ -195,7 +270,7 @@ def send_order(symbol: str, trade: core.Trade, volume: float, magic: int,
         "tp": round(trade.tp, digits),
         "deviation": int(deviation),
         "magic": int(magic),
-        "comment": "smc",
+        "comment": "smc r=%.2f" % trade.risk,
         "type_time": mt5.ORDER_TIME_GTC,
     }
     for filling in (mt5.ORDER_FILLING_IOC, mt5.ORDER_FILLING_FOK,
@@ -319,7 +394,7 @@ class Journal:
 
         n, total = self.totals()
         LOG.info("CLOSED %s at %.2f (%s) %+.2f R, %+.2f -> forward record: "
-                 "%d trades, %+.2f R total, %+.3f R average (backtest: +0.315)",
+                 "%d trades, %+.2f R total, %+.3f R average (v2 backtest: +0.31)",
                  row[2], exit_price, reason, row[8], pnl, n, total,
                  total / n if n else 0.0)
 
@@ -340,51 +415,58 @@ class Journal:
 
 
 # --------------------------------------------------------------------------- #
-# position management: break-even at +1R (rule 6)
+# position management: break-even, step trail (rule 6)
 # --------------------------------------------------------------------------- #
 def manage(position, cfg: core.Config, dry: bool,
-           journal: Optional["Journal"] = None) -> None:
-    """Rebuilds the trade from the position itself, so a restart loses nothing.
-
-    TP was placed at entry + rr*R, so R = |TP - entry| / rr - no state file.
-    """
+           journal: Optional["Journal"] = None,
+           state: Optional[PositionState] = None) -> None:
+    """Rebuilds the trade from the position + its saved risk, so a restart loses
+    nothing. Uses the same core functions as the backtest (apply_breakeven,
+    apply_trailing), fed with the live price instead of a candle's range."""
     d = 1 if position.type == mt5.POSITION_TYPE_BUY else -1
     entry = position.price_open
-    if not position.tp:
-        return
-    risk = abs(position.tp - entry) / cfg.rr
+    risk = (state.risk(position, cfg) if state is not None
+            else (abs(position.tp - entry) / cfg.rr if position.tp else 0.0))
     if risk <= 0:
         return
-
-    moved_already = (position.sl >= entry - 1e-9 if d > 0
-                     else (position.sl <= entry + 1e-9 and position.sl > 0))
-    if moved_already:
-        return
-
     tick = mt5.symbol_info_tick(position.symbol)
     if tick is None:
         return
     price = tick.bid if d > 0 else tick.ask
+    trade = trade_from_position(d, entry, position.sl, position.tp, risk, cfg)
+    sl = trade.sl
+    moved = core.apply_breakeven(trade, high=price, low=price)
+    moved = core.apply_trailing(trade, high=price, low=price, cfg=cfg) or moved
+    if not moved:
+        return
+    what = ("step trail -> SL locks %+.1fR" % trade.trail_r if trade.trail_r > 0
+            else "+%.1fR reached -> SL to break-even" % cfg.be_trigger_r)
+    LOG.info("%s (price %.2f): SL %.2f -> %.2f", what, price, sl, trade.sl)
+    if dry:
+        LOG.info("[dry-run] would move SL to %.2f", trade.sl)
+    elif move_stop(position, trade.sl, mt5.symbol_info(position.symbol).digits) and journal:
+        journal.moved_to_be(position.ticket)
 
-    trade = core.Trade(direction=d, entry=entry, sl=position.sl, tp=position.tp,
-                       risk=risk, initial_sl=position.sl,
-                       be_trigger=entry + d * cfg.be_trigger_r * risk,
-                       be_price=entry + d * cfg.pips(cfg.be_cost_pips))
-    if core.apply_breakeven(trade, high=price, low=price):
-        LOG.info("+%.1fR reached (%.2f) -> SL to break-even %.2f",
-                 cfg.be_trigger_r, price, trade.sl)
-        if dry:
-            LOG.info("[dry-run] would move SL to %.2f", trade.sl)
-        elif move_stop(position, trade.sl,
-                       mt5.symbol_info(position.symbol).digits) and journal:
-            journal.moved_to_be(position.ticket)
+
+def trade_from_position(d: int, entry: float, sl: float, tp: float, risk: float,
+                        cfg: core.Config) -> core.Trade:
+    """A core.Trade in the state the broker's position shows: whether break-even
+    is done and which R the step trail has locked are read off the current SL."""
+    be_price = entry + d * cfg.pips(cfg.be_cost_pips)
+    locked = (sl - entry) * d / risk if sl else -1.0       # R the stop guarantees now
+    be_r = (be_price - entry) * d / risk
+    return core.Trade(direction=d, entry=entry, sl=sl, tp=tp, risk=risk,
+                      initial_sl=entry - d * risk,
+                      be_trigger=entry + d * cfg.be_trigger_r * risk, be_price=be_price,
+                      be_done=bool(sl) and locked >= be_r - 1e-9,
+                      trail_r=locked if locked > be_r + 1e-9 else 0.0)
 
 
 # --------------------------------------------------------------------------- #
 # feeding the tracker - the same way backtest.py does
 # --------------------------------------------------------------------------- #
 def feed_tracker(tracker: core.SetupTracker, history: core.Bars, need: int,
-                 last_fed: Optional[pd.Timestamp]):
+                 last_fed: Optional[pd.Timestamp], trend=None):
     """Hand the tracker every closed candle after `last_fed`, oldest first.
 
     backtest.py calls tracker.update() on EVERY candle with a window of exactly
@@ -400,6 +482,9 @@ def feed_tracker(tracker: core.SetupTracker, history: core.Bars, need: int,
     have. Signals from replayed candles are in the past and are only reported,
     never traded; the setup is spent either way, exactly as in the backtest.
 
+    `trend` (optional) holds the higher-timeframe trend for every candle of
+    `history`, as core.trend_series() gives it to the backtest.
+
     Returns (signal on the newest candle or None, candles fed, stale signals).
     """
     n = len(history)
@@ -414,7 +499,8 @@ def feed_tracker(tracker: core.SetupTracker, history: core.Bars, need: int,
         first = max(need - 1, int(history.time.searchsorted(last_fed, side="right")))
     signal, stale = None, []
     for i in range(first, n):
-        found = tracker.update(history.window(i - need + 1, i + 1))
+        found = tracker.update(history.window(i - need + 1, i + 1),
+                               trend=int(trend[i]) if trend is not None else 0)
         if found is None:
             continue
         if i == n - 1:
@@ -460,6 +546,7 @@ def run(cfg: core.Config, args) -> None:
     tracker = core.SetupTracker(cfg)      # watches each setup until the OB is touched
     last_seen = None
     journal = Journal(None if args.dry_run else args.journal)
+    state = PositionState(None if args.dry_run else args.state)
     traded_obs = journal.traded_obs()      # never take the same OB twice
     if journal.path:
         n, total = journal.totals()
@@ -469,16 +556,24 @@ def run(cfg: core.Config, args) -> None:
         try:
             position = our_position(cfg.symbol, args.magic)
 
+            now_utc = datetime.now(timezone.utc)
             if position is not None:
-                manage(position, cfg, args.dry_run, journal)
-                if cfg.close_at_session_end and not core.in_session(
-                        datetime.now(timezone.utc), cfg):
+                manage(position, cfg, args.dry_run, journal, state)
+                opened = (pd.Timestamp(position.time, unit="s", tz="UTC")
+                          - pd.Timedelta(hours=offset))
+                if core.friday_cutoff(now_utc, cfg, entry_ts=opened):
+                    LOG.info("Friday cut-off (%s New York) -> flattening before the "
+                             "weekend", cfg.friday_close)
+                    if not args.dry_run:
+                        close_position(position, args.deviation)
+                elif cfg.close_at_session_end and not core.in_session(now_utc, cfg):
                     LOG.info("New York session closed -> flattening")
                     if not args.dry_run:
                         close_position(position, args.deviation)
             else:
                 for ticket in list(journal.live):      # it closed on its own
                     journal.closed(ticket, cfg)
+                state.forget_except([])
 
             # 2 x need: the extra half is replayed after a restart or a stall
             history = get_bars(cfg.symbol, cfg.timeframe, 2 * need, offset)
@@ -491,7 +586,8 @@ def run(cfg: core.Config, args) -> None:
                 # EVERY closed candle goes to the tracker, like in the backtest -
                 # also while a position is open, outside the session, or after the
                 # daily cap. Only the decision to trade is gated below.
-                signal, fed, stale = feed_tracker(tracker, history, need, last_seen)
+                trend = htf_trend(cfg.symbol, cfg, history.time, offset)
+                signal, fed, stale = feed_tracker(tracker, history, need, last_seen, trend)
                 if last_seen is None:
                     LOG.info("tracker warmed up on %d past candles (%d setup(s) "
                              "waiting)", fed, len(tracker.waiting()))
@@ -507,8 +603,7 @@ def run(cfg: core.Config, args) -> None:
 
             if fresh_bar and position is not None:
                 d = 1 if position.type == mt5.POSITION_TYPE_BUY else -1
-                risk = (abs(position.tp - position.price_open) / cfg.rr
-                        if position.tp else 0.0)
+                risk = state.risk(position, cfg)
                 now_price = float(bars.close[-1])
                 LOG.info("holding %s %.2f @%.2f | now %.2f (%+.2f R) | SL %.2f "
                          "TP %.2f", "BUY" if d > 0 else "SELL", position.volume,
@@ -522,6 +617,8 @@ def run(cfg: core.Config, args) -> None:
             if fresh_bar and position is None:
                 if not core.in_session(bar_time, cfg):
                     LOG.debug("%s outside the NY session", bar_time)
+                elif core.friday_cutoff(bar_time, cfg):
+                    LOG.debug("%s past the Friday cut-off, no new trade", bar_time)
                 elif trades_today(cfg.symbol, args.magic, cfg) >= (
                         cfg.max_trades_per_day + cfg.extra_trades_if_quality):
                     # the hard ceiling: even a perfect setup cannot go past this
@@ -545,7 +642,7 @@ def run(cfg: core.Config, args) -> None:
                                  "skipping", signal.ob_time)
                     elif signal is not None:
                         LOG.info("SIGNAL %s", signal.describe(cfg))
-                        if take_signal(signal, cfg, args, info, journal):
+                        if take_signal(signal, cfg, args, info, journal, state):
                             traded_obs.add(str(signal.ob_time))
 
             _time.sleep(args.poll)
@@ -559,7 +656,8 @@ def run(cfg: core.Config, args) -> None:
 
 
 def take_signal(signal: core.Signal, cfg: core.Config, args, info,
-                journal: Optional[Journal] = None) -> bool:
+                journal: Optional[Journal] = None,
+                state: Optional["PositionState"] = None) -> bool:
     """True when the setup was acted on (or would have been, in a dry run)."""
     tick = mt5.symbol_info_tick(cfg.symbol)
     if tick is None:
@@ -605,6 +703,10 @@ def take_signal(signal: core.Signal, cfg: core.Config, args, info,
         # the fill price is what the broker gave us, not what we asked for
         filled = core.build_trade(signal, position.price_open, cfg) or trade
         journal.opened(position.ticket, signal, filled, position.volume)
+    if position is not None and state is not None:
+        # the risk the order was sized and targeted with: entry - initial SL
+        state.remember(position.ticket, (position.price_open - signal.sl) * signal.direction,
+                       cfg.rr, position.price_open)
     return True
 
 
@@ -614,10 +716,13 @@ def parse_args(argv=None):
     p.add_argument("--symbol", default="XAUUSD", help="broker name, e.g. XAUUSD.m")
     p.add_argument("--timeframe", default="M5", choices=sorted(TIMEFRAMES))
     p.add_argument("--risk", type=float, default=0.5, help="%% of equity per trade")
-    p.add_argument("--max-trades", type=int, default=3, help="per day")
+    p.add_argument("--max-trades", type=int, default=None,
+                   help="per day (default: Config.max_trades_per_day)")
     p.add_argument("--dry-run", action="store_true", help="log signals, send nothing")
     p.add_argument("--journal", default="reports/forward_trades.csv",
                    help="CSV of closed trades, for comparing against the backtest")
+    p.add_argument("--state", default="reports/live_positions.json",
+                   help="risk of each open position, kept across restarts")
     p.add_argument("--close-at-session-end", action="store_true")
     p.add_argument("--magic", type=int, default=777001)
     p.add_argument("--deviation", type=int, default=20, help="max slippage, points")
@@ -647,8 +752,10 @@ def main(argv=None) -> int:
         raise SystemExit("this bot trades XAUUSD only (got %r)" % args.symbol)
 
     cfg = core.Config(symbol=args.symbol, timeframe=args.timeframe,
-                      risk_percent=args.risk, max_trades_per_day=args.max_trades,
+                      risk_percent=args.risk,
                       close_at_session_end=args.close_at_session_end)
+    if args.max_trades is not None:
+        cfg.max_trades_per_day = args.max_trades
 
     connect(*account_settings(args))
 
