@@ -6,6 +6,16 @@ number is a git tag (`v1.0.0`, ...), and a short note goes here.
 `MAJOR.MINOR.PATCH` - PATCH = a fix, MINOR = a new option or feature,
 MAJOR = a change that alters how the bot trades by default.
 
+## v2.0.1 - 2026-11-19
+
+- **Fix - server clock at start-up**: the live bot only trusts the broker's clock
+  once the quote is actually moving. On the first v2 dry run a one-hour-old quote
+  (terminal still syncing) made a UTC+0 server look like UTC-1, which would have
+  shifted the NY session and the Friday cut-off by an hour. Without a live quote
+  within 60 s it falls back to UTC+0 with a warning (`--server-offset` overrides).
+  New test in `tests/test_rules.py`. Dry run on the demo account afterwards: clock
+  UTC+0, every candle handled within 2 s, no errors, no orders.
+
 ## v2.0.0 - 2026-11-18
 
 Default trading behaviour changes (hence MAJOR). Full study: `research/RESULTS.md`.

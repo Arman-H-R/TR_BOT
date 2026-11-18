@@ -180,3 +180,19 @@ def test_friday_close_in_backtest(monkeypatch):
 if __name__ == "__main__":
     import pytest
     raise SystemExit(pytest.main([__file__, "-q"]))
+
+
+def test_server_offset_needs_a_live_tick(monkeypatch):
+    """A frozen (stale) quote must not set the server clock; a moving one does."""
+    import time as _t
+    now = _t.time()
+    monkeypatch.setattr(live_trade._time, "sleep", lambda s: None)
+    # frozen quote, one hour old -> falls back (the 2026-11-18 start-up bug gave UTC-1)
+    frozen = SimpleNamespace(time=int(now - 3600), time_msc=1)
+    live_trade.mt5 = SimpleNamespace(symbol_info_tick=lambda s: frozen)
+    assert live_trade.server_utc_offset("XAUUSD", fallback=0.0, wait=0.01) == 0.0
+    # moving quote on a UTC+2 server
+    seq = iter(range(10 ** 6))
+    live_trade.mt5 = SimpleNamespace(symbol_info_tick=lambda s: SimpleNamespace(
+        time=int(_t.time() + 7200), time_msc=next(seq)))
+    assert live_trade.server_utc_offset("XAUUSD", wait=5) == 2.0

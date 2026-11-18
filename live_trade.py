@@ -121,22 +121,29 @@ def account_kind(acc) -> str:
             mt5.ACCOUNT_TRADE_MODE_REAL: "REAL"}.get(acc.trade_mode, "?")
 
 
-def server_utc_offset(symbol: str, fallback: float = 0.0) -> float:
+def server_utc_offset(symbol: str, fallback: float = 0.0, wait: float = 60.0) -> float:
     """Broker server clock minus UTC, in hours (MT5 candle times are SERVER time).
 
-    Estimated from the last tick. While the market is closed that tick is stale,
-    which would give a nonsense offset - an implausible answer is dropped.
+    Estimated from a LIVE tick. A tick that is not moving can be any age - the
+    market may be closed, or the terminal may still be syncing after start-up
+    (seen on 2026-11-18: a one-hour-old quote gave UTC-1 for a UTC+0 server and
+    would have shifted the session and the Friday cut-off by an hour). So the
+    quote must change while we watch before its clock is trusted.
     Pass --server-offset when you want certainty (most brokers are UTC+2/+3).
     """
-    tick = mt5.symbol_info_tick(symbol)
-    if tick is None or not tick.time:
-        return fallback
-    hours = round((tick.time - datetime.now(timezone.utc).timestamp()) / 3600.0)
-    if -12 <= hours <= 14:
-        return float(hours)
-    LOG.warning("stale quote for %s (market closed?): offset guess %+g h dropped, "
-                "using UTC%+g - pass --server-offset if that is wrong",
-                symbol, hours, fallback)
+    first = mt5.symbol_info_tick(symbol)
+    deadline = _time.time() + wait
+    while first is not None and _time.time() < deadline:
+        _time.sleep(1.0)
+        tick = mt5.symbol_info_tick(symbol)
+        if tick is not None and tick.time_msc != first.time_msc:
+            hours = (tick.time - datetime.now(timezone.utc).timestamp()) / 3600.0
+            if -12 <= round(hours) <= 14 and abs(hours - round(hours)) < 0.1:
+                return float(round(hours))
+            break
+    LOG.warning("no live quote for %s within %.0f s (market closed or terminal still "
+                "syncing): using server clock UTC%+g - pass --server-offset if that "
+                "is wrong", symbol, wait, fallback)
     return float(fallback)
 
 
