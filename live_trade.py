@@ -726,6 +726,9 @@ def parse_args(argv=None):
     p.add_argument("--max-trades", type=int, default=None,
                    help="per day (default: Config.max_trades_per_day)")
     p.add_argument("--dry-run", action="store_true", help="log signals, send nothing")
+    p.add_argument("--demo-only", action="store_true",
+                   help="refuse to run unless the logged-in account is a DEMO account "
+                        "(use this for the forward test)")
     p.add_argument("--journal", default="reports/forward_trades.csv",
                    help="CSV of closed trades, for comparing against the backtest")
     p.add_argument("--state", default="reports/live_positions.json",
@@ -767,6 +770,11 @@ def main(argv=None) -> int:
     connect(*account_settings(args))
 
     terminal = mt5.terminal_info()
+    acc = mt5.account_info()
+    if args.demo_only and (acc is None or acc.trade_mode != mt5.ACCOUNT_TRADE_MODE_DEMO):
+        mt5.shutdown()
+        raise SystemExit("--demo-only: the terminal is logged into a %s account, not DEMO - "
+                         "nothing was traded" % (account_kind(acc) if acc else "missing"))
     if args.dry_run:
         LOG.info("DRY RUN: watching only, no order will be sent")
     elif terminal is not None and not terminal.trade_allowed:

@@ -6,6 +6,12 @@ number is a git tag (`v1.0.0`, ...), and a short note goes here.
 `MAJOR.MINOR.PATCH` - PATCH = a fix, MINOR = a new option or feature,
 MAJOR = a change that alters how the bot trades by default.
 
+## v2.1.0 - 2026-11-19
+
+- **New option - `--demo-only`**: the live bot refuses to start unless the MT5
+  terminal is logged into a DEMO account. Used for the forward test that starts
+  today (`python live_trade.py --demo-only`).
+
 ## v2.0.1 - 2026-11-19
 
 - **Fix - server clock at start-up**: the live bot only trusts the broker's clock
