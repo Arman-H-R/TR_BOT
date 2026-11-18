@@ -1,0 +1,17 @@
+# Dependencies for the vendored graphipy/ package (see graphipy/VENDORED.md).
+# Only needed for the social-media API modules and the Neo4j backend;
+# the DictGraph / PandasGraph / ExportNX core needs just pandas + networkx,
+# which are already covered by requirements.txt.
+#
+# NOT YET INSTALLED: files.pythonhosted.org does not resolve on this machine.
+
+networkx>=3.0          # used by exportnx.py; missing from upstream requirements
+pytumblr
+httplib2
+google-api-python-client
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+oauth2client           # deprecated upstream since 2018
+facebook-sdk
+py2neo                 # unmaintained; only needed for the Neo4j backend

@@ -1,0 +1,17 @@
+# generated
+reports/
+data/*.csv
+data/*.parquet
+*.log
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# graphipy PandasGraph writes here
+csv/
+
+# backtest output written to the project root
+/trades.csv

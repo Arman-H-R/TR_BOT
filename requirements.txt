@@ -1,0 +1,4 @@
+pandas>=2.0
+numpy>=1.24
+MetaTrader5>=5.0.45   # Windows only; live trading and --mt5 backtests
+tzdata                # America/New_York session times on Windows
