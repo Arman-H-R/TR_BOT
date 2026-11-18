@@ -6,6 +6,15 @@ number is a git tag (`v1.0.0`, ...), and a short note goes here.
 `MAJOR.MINOR.PATCH` - PATCH = a fix, MINOR = a new option or feature,
 MAJOR = a change that alters how the bot trades by default.
 
+## v2.2.0 - 2026-11-19
+
+- **New - `monthly_report.py`**: the per-month table (profit %, buys/sells,
+  trades per week, full TP / SL / break-even, win rate, R, profit factor,
+  drawdown, balance) for the backtest (`python monthly_report.py`) or the demo
+  forward test (`python monthly_report.py --forward`). v2 backtest, last 12
+  months: +29.6 %, 174 trades, 3.3/week, 39 TP / 102 SL / 24 BE, max DD 5.4 %.
+- Demo forward test of v2 started 2026-11-19 (`--demo-only`).
+
 ## v2.1.0 - 2026-11-19
 
 - **New option - `--demo-only`**: the live bot refuses to start unless the MT5
