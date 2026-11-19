@@ -6,6 +6,13 @@ number is a git tag (`v1.0.0`, ...), and a short note goes here.
 `MAJOR.MINOR.PATCH` - PATCH = a fix, MINOR = a new option or feature,
 MAJOR = a change that alters how the bot trades by default.
 
+## v2.3.0 - 2026-11-19
+
+- **New option - `monthly_report.py --risk`**: the monthly table at any risk per
+  trade. Last 12 months, same 174 trades: 0.5 % -> +29.6 %, max DD 5.4 %;
+  1 % -> +68.7 %, max DD 11.1 %. Monte Carlo 95th-percentile drawdown 12 % vs
+  23 %. The live default stays 0.5 % (`--risk 1` to change it).
+
 ## v2.2.0 - 2026-11-19
 
 - **New - `monthly_report.py`**: the per-month table (profit %, buys/sells,

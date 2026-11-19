@@ -85,6 +85,7 @@ def main() -> int:
     ap.add_argument("--journal", default=os.path.join(HERE, "reports", "forward_trades.csv"))
     ap.add_argument("--months", type=int, default=12)
     ap.add_argument("--balance", type=float, default=4700.0)
+    ap.add_argument("--risk", type=float, default=None, help="%% of equity per trade (default: Config)")
     args = ap.parse_args()
 
     if args.forward:
@@ -105,13 +106,16 @@ def main() -> int:
         df = df.set_index("time")[["open", "high", "low", "close"]]
         start = df.index[-1] - pd.DateOffset(months=args.months)
         df = df[df.index >= start - pd.Timedelta(days=2)]       # warm-up candles
-        res, _, _ = backtest.run(df, core.Config(), 0.30, balance=args.balance,
+        cfg = core.Config()
+        if args.risk is not None:
+            cfg.risk_percent = args.risk
+        res, _, _ = backtest.run(df, cfg, 0.30, balance=args.balance,
                                  spec=dict(stops_level=5, point=0.01))
         t = pd.DataFrame([x.__dict__ for x in res])
         t["entry_time"] = pd.to_datetime(t.entry_time, utc=True)
         t = t[t.entry_time >= start]
         weeks = (df.index[-1] - start).days / 7
-        label = (f"BACKTEST v2 (backtest.py, spread 0.30 + gap fills, risk 0.5 %, "
+        label = (f"BACKTEST v2 (backtest.py, spread 0.30 + gap fills, risk {cfg.risk_percent:g} %, "
                  f"start {args.balance:.0f}) {start:%Y-%m-%d} .. {df.index[-1]:%Y-%m-%d}")
         out = "backtest"
 
@@ -120,6 +124,8 @@ def main() -> int:
     extra = {k: tot.pop(k) for k in ("_avg_r", "_losing_streak")}
     tab = pd.concat([tab, pd.DataFrame([tot])], ignore_index=True)
     os.makedirs(os.path.join(HERE, "reports"), exist_ok=True)
+    if not args.forward and args.risk is not None:
+        out += f"_risk{args.risk:g}"
     tab.to_csv(os.path.join(HERE, "reports", f"monthly_{out}.csv"), index=False)
     pd.set_option("display.width", 250)
     print(label)
