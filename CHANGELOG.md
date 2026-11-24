@@ -6,6 +6,31 @@ number is a git tag (`v1.0.0`, ...), and a short note goes here.
 `MAJOR.MINOR.PATCH` - PATCH = a fix, MINOR = a new option or feature,
 MAJOR = a change that alters how the bot trades by default.
 
+## v2.4.0 - 2026-11-24
+
+- **New - research v3** (`research/v3/`, report `research/v3/RESULTS_V3.md`,
+  tables in `research/v3/reports/`). No trading rule changed: the bot still
+  trades v2.
+  - **Scope:** 30 755 logged experiments.
+    - all 71 Config parameters, one at a time;
+    - Optuna searches on M5;
+    - M15 / M30 / H1 / H4 re-optimised separately;
+    - 2-, 3- and 4-timeframe architectures (HTF trend / BOS / sweep / OB
+      confirmations, lower-TF entry confirmation);
+    - multi-year runs on M15 (2022+) and H1 (2017+);
+    - walk-forward, parameter stability, Monte Carlo;
+    - one pre-registered test on Jun-Nov 2026.
+  - **Result: nothing beat v2 out of sample.** The pre-registered best candidate
+    made -6 R on the test, against +30.6 R for v2. Optimised configs fitted the
+    H1-2026 regime: the rank correlation between pre-test score and test R was
+    -0.80. M5 remains the best timeframe. Mandatory multi-timeframe
+    confirmations cost trades and R. M1 candles lose.
+  - **Audit** (`research/v3/PARAM_AUDIT.md`): `entry_on_retouch` and
+    `bos_max_age` have no effect, and 9 more parameters are inert at the
+    defaults. No look-ahead found.
+- `research/engine.py`: session windows that cross midnight (Asia) are supported.
+- `research/s11_sessions.py`: the session comparison (NY 13-22 UTC best).
+
 ## v2.3.0 - 2026-11-19
 
 - **New option - `monthly_report.py --risk`**: the monthly table at any risk per

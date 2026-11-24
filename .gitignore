@@ -18,3 +18,5 @@ csv/
 
 # research candidate cache
 research/cache/
+research/v3/cache/
+!research/v3/reports/

@@ -344,7 +344,9 @@ def eligible(c: pd.DataFrame, m: Market, p: Params) -> np.ndarray:
     i = c.i.to_numpy()
     d = c.d.to_numpy()
     mins = m.ny_min[i]
-    ok = (mins >= p.sess_start) & (mins < p.sess_end) & np.isin(m.ny_wd[i], p.weekdays)
+    insess = ((mins >= p.sess_start) & (mins < p.sess_end) if p.sess_start <= p.sess_end
+              else (mins >= p.sess_start) | (mins < p.sess_end))     # overnight window
+    ok = insess & np.isin(m.ny_wd[i], p.weekdays)
     ok &= quality(c, m, p) >= p.min_quality
     if p.amd_mode == "filter":
         ok &= amd_bias(m)[i] == d

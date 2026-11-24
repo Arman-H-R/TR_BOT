@@ -1,0 +1,861 @@
+{
+ "v2 baseline (shipped)": {
+  "cfg": {},
+  "arch": {
+   "setup": "M5"
+  },
+  "dataset": "A",
+  "costs": "real"
+ },
+ "v1 baseline": {
+  "cfg": {
+   "be_trigger_r": 1.0,
+   "entry_confirm_close": false,
+   "friday_close": null
+  },
+  "arch": {
+   "setup": "M5"
+  },
+  "dataset": "A",
+  "costs": "real"
+ },
+ "best single-TF M5": {
+  "cfg": {
+   "amd_mode": "off",
+   "be_cost_pips": 5.0,
+   "be_trigger_r": 99.0,
+   "bos_max_age": 90,
+   "cancel_on_opposite_break": false,
+   "entry_confirm_close": true,
+   "friday_close": "14:00",
+   "lq_lookback_bars": 40,
+   "lq_min_touches": 2,
+   "lq_require_between_bos": true,
+   "lq_sweep_within_bars": 10,
+   "lq_tolerance_pips": 13.7,
+   "max_sl_pips": 92.0,
+   "max_trades_per_day": 1,
+   "min_pullback_bars": 2,
+   "min_quality": 2,
+   "min_sl_pips": 7.8,
+   "ob_pick": "first",
+   "ob_search_bars": 35,
+   "ob_use_body": true,
+   "ob_valid_bars": 90,
+   "pullback_extra_bars": 8,
+   "rr": 6.5,
+   "session_end": "15:00",
+   "session_start": "03:00",
+   "sl_buffer_pips": 15.8,
+   "swing_lookback": 2,
+   "trail_steps": false,
+   "trend_filter": "H1"
+  },
+  "arch": {
+   "setup": "M5"
+  },
+  "dataset": "A",
+  "costs": "real"
+ },
+ "best single-TF M15": {
+  "cfg": {
+   "amd_mode": "off",
+   "be_cost_pips": 1.0,
+   "be_trigger_r": 1.5,
+   "bos_max_age": 80,
+   "cancel_on_opposite_break": false,
+   "entry_confirm_close": false,
+   "friday_close": "12:00",
+   "lq_lookback_bars": 80,
+   "lq_min_touches": 1,
+   "lq_require_between_bos": false,
+   "lq_sweep_within_bars": 10,
+   "lq_tolerance_pips": 32.3,
+   "max_sl_pips": 529.0,
+   "max_trades_per_day": 6,
+   "min_pullback_bars": 0,
+   "min_quality": 0,
+   "min_sl_pips": 30.7,
+   "ob_pick": "extreme",
+   "ob_search_bars": 5,
+   "ob_small_pips": 34.6,
+   "ob_use_body": true,
+   "ob_valid_bars": 20,
+   "pullback_extra_bars": 6,
+   "rr": 2.0,
+   "session_end": "19:00",
+   "session_start": "03:00",
+   "sl_buffer_pips": 16.1,
+   "swing_lookback": 1,
+   "trail_steps": false,
+   "trend_filter": "H4"
+  },
+  "arch": {
+   "exec": "M5",
+   "setup": "M15"
+  },
+  "dataset": "A",
+  "costs": "real"
+ },
+ "best single-TF M30": {
+  "cfg": {
+   "amd_mode": "off",
+   "be_cost_pips": 6.0,
+   "be_trigger_r": 3.0,
+   "bos_max_age": 90,
+   "cancel_on_opposite_break": false,
+   "entry_confirm_close": false,
+   "friday_close": "14:00",
+   "lq_lookback_bars": 80,
+   "lq_min_touches": 3,
+   "lq_require_between_bos": false,
+   "lq_sweep_within_bars": 10,
+   "lq_tolerance_pips": 31.1,
+   "max_sl_pips": 285.0,
+   "max_trades_per_day": 4,
+   "min_pullback_bars": 3,
+   "min_quality": 0,
+   "min_sl_pips": 59.2,
+   "ob_pick": "last",
+   "ob_search_bars": 20,
+   "ob_small_pips": 49.0,
+   "ob_use_body": false,
+   "ob_valid_bars": 90,
+   "pullback_extra_bars": 3,
+   "rr": 6.5,
+   "session_end": "17:00",
+   "session_start": "03:00",
+   "sl_buffer_pips": 33.2,
+   "swing_lookback": 1,
+   "trail_gap_r": 1.5,
+   "trail_start_r": 1.5,
+   "trail_steps": true,
+   "trend_filter": "H4"
+  },
+  "arch": {
+   "ctx": [],
+   "ctx_mode": "all",
+   "entry": "none",
+   "exec": "M5",
+   "setup": "M30"
+  },
+  "dataset": "A",
+  "costs": "real"
+ },
+ "best single-TF H1": {
+  "cfg": {
+   "amd_mode": "off",
+   "be_cost_pips": 1.0,
+   "be_trigger_r": 0.5,
+   "bos_max_age": 80,
+   "cancel_on_opposite_break": false,
+   "entry_confirm_close": false,
+   "friday_close": "14:00",
+   "lq_lookback_bars": 160,
+   "lq_min_touches": 1,
+   "lq_require_between_bos": false,
+   "lq_sweep_within_bars": 0,
+   "lq_tolerance_pips": 52.5,
+   "max_sl_pips": 1284.0,
+   "max_trades_per_day": 6,
+   "min_pullback_bars": 0,
+   "min_quality": 1,
+   "min_sl_pips": 47.8,
+   "ob_pick": "extreme",
+   "ob_search_bars": 20,
+   "ob_small_pips": 69.3,
+   "ob_use_body": true,
+   "ob_valid_bars": 70,
+   "pullback_extra_bars": 4,
+   "rr": 2.0,
+   "session_end": "19:00",
+   "session_start": "05:00",
+   "sl_buffer_pips": 24.3,
+   "swing_lookback": 1,
+   "trail_steps": false,
+   "trend_filter": "H4"
+  },
+  "arch": {
+   "exec": "M5",
+   "setup": "H1"
+  },
+  "dataset": "A",
+  "costs": "real"
+ },
+ "best MTF #1": {
+  "cfg": {
+   "amd_mode": "off",
+   "be_cost_pips": 1.0,
+   "be_trigger_r": 1.5,
+   "bos_max_age": 80,
+   "cancel_on_opposite_break": false,
+   "entry_confirm_close": false,
+   "friday_close": "12:00",
+   "lq_lookback_bars": 80,
+   "lq_min_touches": 1,
+   "lq_require_between_bos": false,
+   "lq_sweep_within_bars": 10,
+   "lq_tolerance_pips": 32.3,
+   "max_sl_pips": 529.0,
+   "max_trades_per_day": 6,
+   "min_pullback_bars": 0,
+   "min_quality": 0,
+   "min_sl_pips": 30.7,
+   "ob_pick": "extreme",
+   "ob_search_bars": 5,
+   "ob_small_pips": 34.6,
+   "ob_use_body": true,
+   "ob_valid_bars": 20,
+   "pullback_extra_bars": 6,
+   "rr": 2.0,
+   "session_end": "19:00",
+   "session_start": "03:00",
+   "sl_buffer_pips": 16.1,
+   "swing_lookback": 1,
+   "trail_steps": false,
+   "trend_filter": "H4"
+  },
+  "arch": {
+   "ctx": [
+    [
+     "ema",
+     "H1"
+    ],
+    [
+     "liq",
+     "H1"
+    ]
+   ],
+   "ctx_mode": "any",
+   "entry": "close_out",
+   "entry_wait": 60,
+   "exec": "M5",
+   "setup": "M15"
+  },
+  "dataset": "A",
+  "costs": "real"
+ },
+ "best MTF #2": {
+  "cfg": {
+   "amd_mode": "off",
+   "be_cost_pips": 1.0,
+   "be_trigger_r": 1.5,
+   "bos_max_age": 80,
+   "cancel_on_opposite_break": false,
+   "entry_confirm_close": false,
+   "friday_close": "12:00",
+   "lq_lookback_bars": 80,
+   "lq_min_touches": 1,
+   "lq_require_between_bos": false,
+   "lq_sweep_within_bars": 10,
+   "lq_tolerance_pips": 32.3,
+   "max_sl_pips": 529.0,
+   "max_trades_per_day": 6,
+   "min_pullback_bars": 0,
+   "min_quality": 0,
+   "min_sl_pips": 30.7,
+   "ob_pick": "extreme",
+   "ob_search_bars": 5,
+   "ob_small_pips": 34.6,
+   "ob_use_body": true,
+   "ob_valid_bars": 20,
+   "pullback_extra_bars": 6,
+   "rr": 2.0,
+   "session_end": "19:00",
+   "session_start": "03:00",
+   "sl_buffer_pips": 16.1,
+   "swing_lookback": 1,
+   "trail_steps": false,
+   "trend_filter": "H4"
+  },
+  "arch": {
+   "ctx": [
+    [
+     "ema",
+     "H1"
+    ],
+    [
+     "liq",
+     "H1"
+    ]
+   ],
+   "ctx_mode": "any",
+   "entry": "close_out",
+   "entry_wait": 30,
+   "exec": "M5",
+   "setup": "M15"
+  },
+  "dataset": "A",
+  "costs": "real"
+ },
+ "best MTF #3": {
+  "cfg": {
+   "amd_mode": "off",
+   "be_cost_pips": 1.0,
+   "be_trigger_r": 1.5,
+   "bos_max_age": 80,
+   "cancel_on_opposite_break": false,
+   "entry_confirm_close": false,
+   "friday_close": "12:00",
+   "lq_lookback_bars": 80,
+   "lq_min_touches": 1,
+   "lq_require_between_bos": false,
+   "lq_sweep_within_bars": 10,
+   "lq_tolerance_pips": 32.3,
+   "max_sl_pips": 529.0,
+   "max_trades_per_day": 6,
+   "min_pullback_bars": 0,
+   "min_quality": 0,
+   "min_sl_pips": 30.7,
+   "ob_pick": "extreme",
+   "ob_search_bars": 5,
+   "ob_small_pips": 34.6,
+   "ob_use_body": true,
+   "ob_valid_bars": 20,
+   "pullback_extra_bars": 6,
+   "rr": 2.0,
+   "session_end": "19:00",
+   "session_start": "03:00",
+   "sl_buffer_pips": 16.1,
+   "swing_lookback": 1,
+   "trail_steps": false,
+   "trend_filter": "H4"
+  },
+  "arch": {
+   "ctx": [
+    [
+     "ema",
+     "H1"
+    ],
+    [
+     "liq",
+     "H1"
+    ]
+   ],
+   "ctx_mode": "any",
+   "entry": "close_out",
+   "entry_wait": 120,
+   "exec": "M5",
+   "setup": "M15"
+  },
+  "dataset": "A",
+  "costs": "real"
+ },
+ "highest profit (val R)": {
+  "cfg": {
+   "amd_mode": "off",
+   "be_cost_pips": 1.0,
+   "be_trigger_r": 4.0,
+   "bos_max_age": 90,
+   "cancel_on_opposite_break": false,
+   "entry_confirm_close": true,
+   "friday_close": "14:00",
+   "lq_lookback_bars": 160,
+   "lq_min_touches": 2,
+   "lq_require_between_bos": true,
+   "lq_sweep_within_bars": 20,
+   "lq_tolerance_pips": 12.8,
+   "max_sl_pips": 87.0,
+   "max_trades_per_day": 1,
+   "min_pullback_bars": 3,
+   "min_quality": 2,
+   "min_sl_pips": 23.3,
+   "ob_pick": "first",
+   "ob_search_bars": 35,
+   "ob_use_body": true,
+   "ob_valid_bars": 90,
+   "pullback_extra_bars": 8,
+   "rr": 7.5,
+   "session_end": "19:00",
+   "session_start": "03:00",
+   "sl_buffer_pips": 12.2,
+   "swing_lookback": 2,
+   "trail_steps": false,
+   "trend_filter": "off"
+  },
+  "arch": {
+   "setup": "M5"
+  },
+  "dataset": "A",
+  "costs": "real"
+ },
+ "highest historical R (train+val)": {
+  "cfg": {
+   "amd_mode": "off",
+   "be_cost_pips": 3.0,
+   "be_trigger_r": 4.0,
+   "bos_max_age": 90,
+   "cancel_on_opposite_break": false,
+   "entry_confirm_close": false,
+   "friday_close": "14:00",
+   "lq_lookback_bars": 100,
+   "lq_min_touches": 2,
+   "lq_require_between_bos": true,
+   "lq_sweep_within_bars": 0,
+   "lq_tolerance_pips": 10.8,
+   "max_sl_pips": 86.0,
+   "max_trades_per_day": 1,
+   "min_pullback_bars": 1,
+   "min_quality": 2,
+   "min_sl_pips": 19.3,
+   "ob_pick": "first",
+   "ob_search_bars": 35,
+   "ob_use_body": true,
+   "ob_valid_bars": 90,
+   "pullback_extra_bars": 8,
+   "rr": 7.0,
+   "session_end": "19:00",
+   "session_start": "03:00",
+   "sl_buffer_pips": 14.4,
+   "swing_lookback": 2,
+   "trail_steps": false,
+   "trend_filter": "H1"
+  },
+  "arch": {
+   "setup": "M5"
+  },
+  "dataset": "A",
+  "costs": "real"
+ },
+ "best risk-adjusted": {
+  "cfg": {
+   "amd_mode": "off",
+   "be_cost_pips": 1.0,
+   "be_trigger_r": 1.5,
+   "bos_max_age": 80,
+   "cancel_on_opposite_break": false,
+   "entry_confirm_close": true,
+   "friday_close": "12:00",
+   "lq_lookback_bars": 80,
+   "lq_min_touches": 1,
+   "lq_require_between_bos": false,
+   "lq_sweep_within_bars": 10,
+   "lq_tolerance_pips": 32.3,
+   "max_sl_pips": 529.0,
+   "max_trades_per_day": 5,
+   "min_pullback_bars": 0,
+   "min_quality": 1,
+   "min_sl_pips": 30.7,
+   "ob_pick": "extreme",
+   "ob_search_bars": 5,
+   "ob_small_pips": 34.6,
+   "ob_use_body": true,
+   "ob_valid_bars": 20,
+   "pullback_extra_bars": 6,
+   "rr": 5.0,
+   "session_end": "19:00",
+   "session_start": "03:00",
+   "sl_buffer_pips": 16.1,
+   "swing_lookback": 1,
+   "trail_steps": false,
+   "trend_filter": "H4"
+  },
+  "arch": {
+   "ctx": [
+    [
+     "ema",
+     "M30"
+    ],
+    [
+     "liq",
+     "H4"
+    ],
+    [
+     "ob",
+     "D1"
+    ]
+   ],
+   "ctx_ema": 100,
+   "ctx_k": 3,
+   "ctx_mode": "any",
+   "ctx_ob_valid": 20,
+   "ctx_sweep_bars": 12,
+   "entry": "color",
+   "entry_wait": 30,
+   "exec": "M5",
+   "setup": "M15"
+  },
+  "dataset": "A",
+  "costs": "real"
+ },
+ "multi-year L_M15": {
+  "cfg": {
+   "amd_mode": "off",
+   "be_cost_pips": 2.0,
+   "be_trigger_r": 4.0,
+   "bos_max_age": 150,
+   "cancel_on_opposite_break": false,
+   "entry_confirm_close": false,
+   "friday_close": "12:00",
+   "lq_lookback_bars": 20,
+   "lq_min_touches": 2,
+   "lq_require_between_bos": true,
+   "lq_sweep_within_bars": 5,
+   "lq_tolerance_pips": 6.1,
+   "max_sl_pips": 131.0,
+   "max_trades_per_day": 4,
+   "min_pullback_bars": 3,
+   "min_quality": 0,
+   "min_sl_pips": 29.6,
+   "ob_pick": "first",
+   "ob_search_bars": 10,
+   "ob_small_pips": 34.6,
+   "ob_use_body": true,
+   "ob_valid_bars": 150,
+   "pullback_extra_bars": 3,
+   "rr": 8.0,
+   "session_end": "15:00",
+   "session_start": "03:00",
+   "sl_buffer_pips": 2.8,
+   "swing_lookback": 1,
+   "trail_steps": false,
+   "trend_filter": "off"
+  },
+  "arch": {
+   "exec": "M5",
+   "setup": "M15"
+  },
+  "dataset": "A",
+  "costs": "real",
+  "origin": "s6_L_M15"
+ },
+ "multi-year L_M30": {
+  "cfg": {
+   "amd_mode": "off",
+   "be_cost_pips": 4.0,
+   "be_trigger_r": 99.0,
+   "bos_max_age": 110,
+   "cancel_on_opposite_break": false,
+   "entry_confirm_close": true,
+   "friday_close": "14:00",
+   "lq_lookback_bars": 160,
+   "lq_min_touches": 1,
+   "lq_require_between_bos": false,
+   "lq_sweep_within_bars": 10,
+   "lq_tolerance_pips": 49.4,
+   "max_sl_pips": 361.0,
+   "max_trades_per_day": 1,
+   "min_pullback_bars": 3,
+   "min_quality": 1,
+   "min_sl_pips": 3.3,
+   "ob_pick": "first",
+   "ob_search_bars": 5,
+   "ob_small_pips": 49.0,
+   "ob_use_body": false,
+   "ob_valid_bars": 110,
+   "pullback_extra_bars": 1,
+   "rr": 2.0,
+   "session_end": "13:00",
+   "session_start": "05:00",
+   "sl_buffer_pips": 13.3,
+   "swing_lookback": 1,
+   "trail_gap_r": 1.0,
+   "trail_start_r": 1.0,
+   "trail_steps": true,
+   "trend_filter": "H1"
+  },
+  "arch": {
+   "exec": "M5",
+   "setup": "M30"
+  },
+  "dataset": "A",
+  "costs": "real",
+  "origin": "s6_L_M30"
+ },
+ "multi-year L_H1": {
+  "cfg": {
+   "amd_mode": "off",
+   "be_cost_pips": 0.0,
+   "be_trigger_r": 2.0,
+   "bos_max_age": 100,
+   "cancel_on_opposite_break": true,
+   "entry_confirm_close": false,
+   "friday_close": "16:00",
+   "lq_lookback_bars": 60,
+   "lq_min_touches": 3,
+   "lq_require_between_bos": false,
+   "lq_sweep_within_bars": 40,
+   "lq_tolerance_pips": 88.8,
+   "max_sl_pips": 244.0,
+   "max_trades_per_day": 5,
+   "min_pullback_bars": 0,
+   "min_quality": 0,
+   "min_sl_pips": 5.8,
+   "ob_pick": "first",
+   "ob_search_bars": 5,
+   "ob_small_pips": 69.3,
+   "ob_use_body": true,
+   "ob_valid_bars": 100,
+   "pullback_extra_bars": 0,
+   "rr": 3.0,
+   "session_end": "13:00",
+   "session_start": "02:00",
+   "sl_buffer_pips": 27.8,
+   "swing_lookback": 1,
+   "trail_steps": false,
+   "trend_filter": "off"
+  },
+  "arch": {
+   "exec": "M5",
+   "setup": "H1"
+  },
+  "dataset": "A",
+  "costs": "real",
+  "origin": "s6_L_H1"
+ },
+ "multi-year L_M15_mtf": {
+  "cfg": {
+   "amd_mode": "off",
+   "be_cost_pips": 2.0,
+   "be_trigger_r": 3.0,
+   "bos_max_age": 100,
+   "cancel_on_opposite_break": false,
+   "entry_confirm_close": false,
+   "friday_close": "12:00",
+   "lq_lookback_bars": 60,
+   "lq_min_touches": 4,
+   "lq_require_between_bos": true,
+   "lq_sweep_within_bars": 5,
+   "lq_tolerance_pips": 24.8,
+   "max_sl_pips": 215.0,
+   "max_trades_per_day": 1,
+   "min_pullback_bars": 1,
+   "min_quality": 2,
+   "min_sl_pips": 40.8,
+   "ob_pick": "first",
+   "ob_search_bars": 15,
+   "ob_small_pips": 34.6,
+   "ob_use_body": true,
+   "ob_valid_bars": 100,
+   "pullback_extra_bars": 3,
+   "rr": 2.5,
+   "session_end": "15:00",
+   "session_start": "03:00",
+   "sl_buffer_pips": 2.0,
+   "swing_lookback": 1,
+   "trail_steps": false,
+   "trend_filter": "off"
+  },
+  "arch": {
+   "ctx": [
+    [
+     "ema",
+     "M30"
+    ],
+    [
+     "liq",
+     "M30"
+    ],
+    [
+     "ob",
+     "H1"
+    ]
+   ],
+   "ctx_ema": 200,
+   "ctx_k": 3,
+   "ctx_mode": "any",
+   "ctx_ob_valid": 20,
+   "ctx_sweep_bars": 6,
+   "entry": "close_out",
+   "entry_wait": 240,
+   "exec": "M5",
+   "setup": "M15"
+  },
+  "dataset": "A",
+  "costs": "real",
+  "origin": "s6_L_M15_mtf"
+ },
+ "multi-year H_H1": {
+  "cfg": {
+   "amd_mode": "off",
+   "be_cost_pips": 0.0,
+   "be_trigger_r": 2.0,
+   "bos_max_age": 110,
+   "cancel_on_opposite_break": true,
+   "entry_confirm_close": false,
+   "friday_close": "16:00",
+   "lq_lookback_bars": 60,
+   "lq_min_touches": 2,
+   "lq_require_between_bos": false,
+   "lq_sweep_within_bars": 40,
+   "lq_tolerance_pips": 91.3,
+   "max_sl_pips": 232.0,
+   "max_trades_per_day": 5,
+   "min_pullback_bars": 0,
+   "min_quality": 0,
+   "min_sl_pips": 9.0,
+   "ob_pick": "first",
+   "ob_search_bars": 5,
+   "ob_small_pips": 69.3,
+   "ob_use_body": false,
+   "ob_valid_bars": 110,
+   "pullback_extra_bars": 0,
+   "rr": 4.0,
+   "session_end": "13:00",
+   "session_start": "02:00",
+   "sl_buffer_pips": 32.0,
+   "swing_lookback": 1,
+   "trail_steps": false,
+   "trend_filter": "off"
+  },
+  "arch": {
+   "exec": "M5",
+   "setup": "H1"
+  },
+  "dataset": "A",
+  "costs": "real",
+  "origin": "s6_H_H1"
+ },
+ "robust contender #4": {
+  "cfg": {
+   "amd_mode": "off",
+   "be_cost_pips": 1.0,
+   "be_trigger_r": 2.0,
+   "bos_max_age": 80,
+   "cancel_on_opposite_break": false,
+   "entry_confirm_close": false,
+   "friday_close": "12:00",
+   "lq_lookback_bars": 80,
+   "lq_min_touches": 1,
+   "lq_require_between_bos": false,
+   "lq_sweep_within_bars": 20,
+   "lq_tolerance_pips": 30.9,
+   "max_sl_pips": 503.0,
+   "max_trades_per_day": 6,
+   "min_pullback_bars": 3,
+   "min_quality": 0,
+   "min_sl_pips": 33.4,
+   "ob_pick": "extreme",
+   "ob_search_bars": 5,
+   "ob_small_pips": 34.6,
+   "ob_use_body": true,
+   "ob_valid_bars": 20,
+   "pullback_extra_bars": 6,
+   "rr": 1.5,
+   "session_end": "19:00",
+   "session_start": "03:00",
+   "sl_buffer_pips": 11.3,
+   "swing_lookback": 1,
+   "trail_steps": false,
+   "trend_filter": "H4"
+  },
+  "arch": {
+   "ctx": [
+    [
+     "bos",
+     "H4"
+    ]
+   ],
+   "ctx_mode": "all",
+   "entry": "none",
+   "exec": "M5",
+   "setup": "M15"
+  },
+  "dataset": "A",
+  "costs": "real"
+ },
+ "robust contender #5": {
+  "cfg": {
+   "amd_mode": "off",
+   "be_cost_pips": 1.0,
+   "be_trigger_r": 2.0,
+   "bos_max_age": 80,
+   "cancel_on_opposite_break": false,
+   "entry_confirm_close": false,
+   "friday_close": "12:00",
+   "lq_lookback_bars": 80,
+   "lq_min_touches": 1,
+   "lq_require_between_bos": false,
+   "lq_sweep_within_bars": 20,
+   "lq_tolerance_pips": 30.9,
+   "max_sl_pips": 503.0,
+   "max_trades_per_day": 6,
+   "min_pullback_bars": 3,
+   "min_quality": 0,
+   "min_sl_pips": 33.4,
+   "ob_pick": "extreme",
+   "ob_search_bars": 5,
+   "ob_small_pips": 34.6,
+   "ob_use_body": true,
+   "ob_valid_bars": 20,
+   "pullback_extra_bars": 6,
+   "rr": 1.5,
+   "session_end": "19:00",
+   "session_start": "03:00",
+   "sl_buffer_pips": 11.3,
+   "swing_lookback": 1,
+   "trail_steps": false,
+   "trend_filter": "H4"
+  },
+  "arch": {
+   "ctx": [
+    [
+     "ema",
+     "H4"
+    ],
+    [
+     "bos",
+     "H4"
+    ]
+   ],
+   "ctx_mode": "all",
+   "entry": "none",
+   "exec": "M5",
+   "setup": "M15"
+  },
+  "dataset": "A",
+  "costs": "real"
+ },
+ "robust contender #6": {
+  "cfg": {
+   "amd_mode": "off",
+   "be_cost_pips": 1.0,
+   "be_trigger_r": 2.0,
+   "bos_max_age": 80,
+   "cancel_on_opposite_break": false,
+   "entry_confirm_close": false,
+   "friday_close": "12:00",
+   "lq_lookback_bars": 80,
+   "lq_min_touches": 1,
+   "lq_require_between_bos": false,
+   "lq_sweep_within_bars": 20,
+   "lq_tolerance_pips": 30.9,
+   "max_sl_pips": 503.0,
+   "max_trades_per_day": 6,
+   "min_pullback_bars": 3,
+   "min_quality": 0,
+   "min_sl_pips": 33.4,
+   "ob_pick": "extreme",
+   "ob_search_bars": 5,
+   "ob_small_pips": 34.6,
+   "ob_use_body": true,
+   "ob_valid_bars": 20,
+   "pullback_extra_bars": 6,
+   "rr": 1.5,
+   "session_end": "19:00",
+   "session_start": "03:00",
+   "sl_buffer_pips": 11.3,
+   "swing_lookback": 1,
+   "trail_steps": false,
+   "trend_filter": "H4"
+  },
+  "arch": {
+   "ctx": [
+    [
+     "bos",
+     "H4"
+    ],
+    [
+     "ob",
+     "H4"
+    ]
+   ],
+   "ctx_mode": "any",
+   "entry": "none",
+   "exec": "M5",
+   "setup": "M15"
+  },
+  "dataset": "A",
+  "costs": "real"
+ }
+}

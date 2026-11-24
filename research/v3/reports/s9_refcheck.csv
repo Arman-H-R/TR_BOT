@@ -1,0 +1,6 @@
+candidate,ref_trades,ref_R,fast_trades,fast_R
+v2 baseline (shipped),238,77.09,238,77.09
+v1 baseline,377,25.47,377,25.47
+best single-TF M5,108,123.65,108,123.65
+highest profit (val R),223,138.5,223,138.5
+highest historical R (train+val),189,193.48,189,193.48
